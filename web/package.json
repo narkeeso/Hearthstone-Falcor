@@ -1,0 +1,16 @@
+{
+  "name": "hearthstone-falcor-web",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Michael Narciso <michael@goguardian.com>",
+  "license": "ISC",
+  "dependencies": {
+    "falcor": "^0.1.14",
+    "falcor-http-datasource": "^0.1.2",
+    "lodash": "^3.10.1"
+  }
+}
