@@ -14,15 +14,15 @@ const HS_BASE_URL = 'https://omgvamp-hearthstone-v1.p.mashape.com';
 export default function hsClient(method, uri) {
   return new Promise((resolve, reject) => {
     request(method, `${HS_BASE_URL}/${uri}`)
-    .set('X-Mashape-Key', HS_API_KEY)
-    .set('Accept', 'application/json')
-    .end((err, res) => {
-      if (err) {
-        reject(err);
-        return;
-      }
+      .set('X-Mashape-Key', HS_API_KEY)
+      .set('Accept', 'application/json')
+      .end((err, res) => {
+        if (err) {
+          reject(err);
+          return;
+        }
 
-      resolve(res.body);
-    });
+        resolve(res.body);
+      });
   });
 };

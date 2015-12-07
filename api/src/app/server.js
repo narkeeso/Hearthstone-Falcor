@@ -4,13 +4,14 @@ import bodyParser from 'body-parser';
 import falcor from 'falcor';
 import FalcorRouter from 'falcor-router';
 import FalcorServer from 'falcor-express';
+import {Observable} from 'rx';
 
 import hsClient from '../lib/hs-api-client';
 
 const app = express();
 
 app.listen(4000, () => {
-  console.log('Hearthstone API Started on Port 4000');
+  console.log('Hearthstone Falcor API Started on Port 4000');
 });
 
 app.use(cors({
@@ -19,58 +20,66 @@ app.use(cors({
   origin: 'http://localhost:8080'
 }));
 
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 
-app.use('/model.json', FalcorServer.dataSourceRoute((req, res, next) => {
-  return new FalcorRouter([
-    {
-      route: 'cardsByClass[{keys:playerClass}].length',
-      get: (pathSet) => {
-        const playerClass = pathSet.playerClass[0];
+class CardsRouter extends FalcorRouter.createClass([
+  {
+    route: 'cardsByClass[{keys:playerClass}].length',
+    get: (pathSet) => {
+      const playerClass = pathSet.playerClass[0];
 
-        return hsClient('GET', `/cards/classes/${playerClass}?collectible=1`)
-          .then((collectibles) => {
-            const cards = collectibles.filter((collectible) => {
-              return collectible.type !== 'Hero';
-            });
+      return Observable.fromPromise(
+        hsClient('GET', `/cards/classes/${playerClass}?collectible=1`)
+      )
+      .map((collectibles) => {
+        const cards = collectibles.filter((collectible) => {
+          return collectible.type !== 'Hero';
+        });
 
+        return {
+          path: ['cardsByClass', playerClass, 'length'],
+          value: cards.length
+        };
+      });
+    }
+  },
+  {
+    route: 'cardsByClass[{keys:playerClass}][{ranges:index}]["name", "img", "imgGold"]',
+    get: (pathSet) => {
+      const playerClass = pathSet.playerClass[0];
+      const range = pathSet.index[0];
+
+      return Observable.fromPromise(
+        hsClient('GET', `/cards/classes/${playerClass}?collectible=1`)
+      )
+      .flatMap((collectibles) => {
+        return Observable
+          .fromArray(collectibles)
+          .filter((collectible) => {
+            return collectible.type !== 'Hero';
+          });
+      })
+      .filter((card, cardIndex) => {
+        return cardIndex >= range.from && cardIndex <= range.to;
+      })
+      .flatMap((card, cardIndex) => {
+        return Observable
+          .fromArray(pathSet[3])
+          .map((key) => {
             return {
-              path: ['cardsByClass', playerClass, 'length'],
-              value: cards.length
+              path: ['cardsByClass', playerClass, cardIndex + range.from, key],
+              value: card[key]
             };
           });
-      }
-    },
-    {
-      route: 'cardsByClass[{keys:playerClass}][{ranges:index}]["name", "img", "imgGold"]',
-      get: (pathSet) => {
-        const playerClass = pathSet.playerClass[0];
-
-        return hsClient('GET', `/cards/classes/${playerClass}?collectible=1`)
-          .then((collectibles) => {
-            const results = [];
-            const cards = collectibles.filter((collectible) => {
-              return collectible.type !== 'Hero';
-            });
-
-            for (let i = pathSet.index[0].from; i < pathSet.index[0].to; i++) {
-              const card = cards[i];
-              const cardKeys = pathSet[3];
-
-              cardKeys.forEach((cardKey) => {
-                results.push({
-                  path: ['cardsByClass', playerClass, i, cardKey],
-                  value: card[cardKey]
-                });
-              });
-            }
-
-            return results;
-          });
-      }
+      });
     }
-  ]);
+  }
+]) {
+  constructor() {
+    super();
+  }
+}
 
-  next();
+app.use('/model.json', FalcorServer.dataSourceRoute((req, res, next) => {
+  return new CardsRouter;
 }));
-

@@ -17,6 +17,7 @@
     "falcor": "^0.1.14",
     "falcor-express": "^0.1.2",
     "falcor-router": "^0.2.12",
+    "rx": "^4.0.7",
     "superagent": "^1.5.0"
   },
   "devDependencies": {},
